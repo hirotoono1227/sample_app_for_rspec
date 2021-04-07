@@ -1,10 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Users', type: :system do
-
-  include LoginSupport
   let(:user) {create(:user)}
-  let(:other_user) {create(:user)}
 
   describe 'ログイン前' do
     describe 'ユーザー新規登録' do
@@ -49,6 +46,7 @@ RSpec.describe 'Users', type: :system do
       context 'ログインしていない状態' do
         it 'マイページへのアクセスが失敗する' do
           visit user_path(user)
+          expect(current_path).to eq login_path
           expect(page).to have_content 'Login required'
         end
       end
@@ -61,9 +59,9 @@ RSpec.describe 'Users', type: :system do
       context 'フォームの入力値が正常' do
         it 'ユーザーの編集が成功する' do
           visit edit_user_path(user)
-          fill_in 'Email', with: 'test@example.com'
-          fill_in 'Password', with: 'test'
-          fill_in 'Password confirmation', with: 'test'
+          fill_in 'Email', with: 'update@example.com'
+          fill_in 'Password', with: 'update_password'
+          fill_in 'Password confirmation', with: 'update_password'
           click_button 'Update'
           expect(current_path).to eq user_path(user)
           expect(page).to have_content "User was successfully updated"
@@ -84,6 +82,7 @@ RSpec.describe 'Users', type: :system do
       context '登録済のメールアドレスを使用' do
         it 'ユーザーの編集が失敗する' do
           visit edit_user_path(user)
+          other_user = create(:user)
           fill_in "Email", with: other_user.email
           fill_in "Password", with: "password"
           fill_in "Password confirmation", with: "password"
@@ -94,8 +93,25 @@ RSpec.describe 'Users', type: :system do
       end
       context '他ユーザーの編集ページにアクセス' do
         it '編集ページへのアクセスが失敗する' do
+          other_user = create(:user)
           visit edit_user_path(other_user)
+          expect(current_path).to eq user_path(user)
           expect(page).to have_content 'Forbidden access.'
+        end
+      end
+
+      describe "マイページ" do
+        context "タスクを作成すること" do
+          it "新規作成したタスクが表示されること" do
+            create(:task, title: 'test_title', status: :doing, user: user)
+            visit user_path(user)
+            expect(page).to have_content('You have 1 task')
+            expect(page).to have_content('test_title')
+            expect(page).to have_content('doing')
+            expect(page).to have_content('Show')
+            expect(page).to have_content('Edit')
+            expect(page).to have_content('Destroy')
+          end
         end
       end
   end
